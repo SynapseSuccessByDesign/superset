@@ -208,7 +208,7 @@ if (isDevMode) {
 }
 
 if (!isDevMode) {
-  // text loading (webpack 4+)
+  // CSS extraction for production builds
   plugins.push(
     new MiniCssExtractPlugin({
       filename: '[name].[chunkhash].entry.css',
@@ -244,9 +244,8 @@ if (isDevMode) {
   // A Superset webpage normally includes two JS bundles in dev, `theme.ts` and
   // the main entrypoint. Only the main entry should have the dev server client,
   // otherwise the websocket client will initialize twice, creating two sockets.
-  // Ref: https://github.com/gaearon/react-hot-loader/issues/141
   PREAMBLE.unshift(
-    `webpack-dev-server/client?http://localhost:${devserverPort}`,
+    `webpack-dev-server/client?http://${devserverHost}:${devserverPort}`,
   );
 }
 
@@ -326,7 +325,11 @@ const config = {
     type: 'filesystem', // Enable filesystem caching
     cacheDirectory: path.resolve(__dirname, '.temp_cache'),
     buildDependencies: {
-      config: [__filename],
+      config: [
+        __filename,
+        path.resolve(__dirname, 'tsconfig.json'),
+        path.resolve(__dirname, 'babel.config.js'),
+      ],
     },
   },
   output,
@@ -372,16 +375,11 @@ const config = {
             `/node_modules/(${[
               'react',
               'react-dom',
-              'prop-types',
-              'react-prop-types',
-              'prop-types-extra',
               'redux',
               'react-redux',
-              'react-hot-loader',
               'react-sortable-hoc',
               'react-table',
               'react-ace',
-              '@hot-loader.*',
               'webpack.*',
               '@?babel.*',
               'lodash.*',
@@ -452,8 +450,9 @@ const config = {
       This prevents "Module not found" errors for moment locale files.
       */
       'moment/min/moment-with-locales': false,
-      // Temporary workaround to allow Storybook 8 to work with existing React v16-compatible stories.
-      // Remove below alias once React has been upgreade to v18.
+      // Storybook 8 expects React 18's createRoot API. Since this project uses React 17,
+      // we alias to the react-16 shim which provides the legacy ReactDOM.render API.
+      // Remove this alias when React is upgraded to v18+.
       '@storybook/react-dom-shim': path.resolve(
         path.join(
           APP_DIR,
