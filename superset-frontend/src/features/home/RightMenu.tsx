@@ -662,7 +662,24 @@ const RightMenu = ({
               {environmentTag.text}
             </Tag>
           );
-        })()}
+        })()
+        }
+        {/* --- YOUR BUTTON BELOW --- */}
+<button
+  style={{
+    marginLeft: '12px',
+    padding: '6px 12px',
+    borderRadius: '6px',
+    border: '1px solid #ccc',
+    cursor: 'pointer',
+    background: '#fff'
+  }}
+  onClick={() => {
+    alert('My Button Clicked 🚀');
+  }}
+>
+  My Button
+</button>
       <Menu
         css={css`
           display: flex;
