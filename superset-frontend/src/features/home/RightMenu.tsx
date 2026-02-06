@@ -668,17 +668,19 @@ const RightMenu = ({
 <button
   style={{
     marginLeft: '12px',
-    padding: '6px 12px',
+    padding: '6px 14px',
     borderRadius: '6px',
-    border: '1px solid #ccc',
+    border: 'none',
     cursor: 'pointer',
-    background: '#fff'
+    background: '#1f8ef1',   // Superset blue
+    color: '#ffffff',        // white text
+    fontWeight: 600,
   }}
   onClick={() => {
-    alert('My Button Clicked 🚀');
+    (window as any).__TOGGLE_AI__?.();
   }}
 >
-  My Button
+  AI Assistant
 </button>
       <Menu
         css={css`
