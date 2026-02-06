@@ -16,6 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+import AiAssistantPanel from "../ai/AiAssistantPanel";
+
 import { Suspense, useEffect } from 'react';
 import { hot } from 'react-hot-loader/root';
 import {
@@ -71,43 +73,55 @@ const LocationPathnameLogger = () => {
   return <></>;
 };
 
-const App = () => (
-  <Router basename={applicationRoot()}>
-    <ScrollToTop />
-    <LocationPathnameLogger />
-    <RootContextProviders>
-      <ExtensionsStartup />
-      <Menu
-        data={bootstrapData.common.menu_data}
-        isFrontendRoute={isFrontendRoute}
-      />
-      <Switch>
-        {routes.map(({ path, Component, props = {}, Fallback = Loading }) => (
-          <Route path={path} key={path}>
-            <Suspense fallback={<Fallback />}>
-              <Layout>
-                <Layout.Content
-                  css={css`
-                    display: flex;
-                    flex-direction: column;
-                  `}
-                >
-                  <ErrorBoundary
-                    css={css`
-                      margin: 16px;
-                    `}
-                  >
-                    <Component user={bootstrapData.user} {...props} />
-                  </ErrorBoundary>
-                </Layout.Content>
-              </Layout>
-            </Suspense>
-          </Route>
-        ))}
-      </Switch>
-      <ToastContainer />
-    </RootContextProviders>
-  </Router>
-);
+const App = () => {
+  return (
+    <>
+      <Router basename={applicationRoot()}>
+        <ScrollToTop />
+        <LocationPathnameLogger />
+
+        <RootContextProviders>
+          <ExtensionsStartup />
+
+          <Menu
+            data={bootstrapData.common.menu_data}
+            isFrontendRoute={isFrontendRoute}
+          />
+
+          <Switch>
+            {routes.map(({ path, Component, props = {}, Fallback = Loading }) => (
+              <Route path={path} key={path}>
+                <Suspense fallback={<Fallback />}>
+                  <Layout>
+                    <Layout.Content
+                      css={css`
+                        display: flex;
+                        flex-direction: column;
+                      `}
+                    >
+                      <ErrorBoundary
+                        css={css`
+                          margin: 16px;
+                        `}
+                      >
+                        <Component user={bootstrapData.user} {...props} />
+                      </ErrorBoundary>
+                    </Layout.Content>
+                  </Layout>
+                </Suspense>
+              </Route>
+            ))}
+          </Switch>
+
+          <ToastContainer />
+        </RootContextProviders>
+      </Router>
+
+      {/* Mount AI globally */}
+      <AiAssistantPanel />
+    </>
+  );
+};
+
 
 export default hot(App);

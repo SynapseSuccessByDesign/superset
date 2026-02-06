@@ -17,6 +17,8 @@
  * under the License.
  */
 /* eslint-env browser */
+import AiAssistantPanel from 'src/ai/AiAssistantPanel';
+
 import cx from 'classnames';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { t } from '@apache-superset/core';
@@ -611,6 +613,7 @@ const DashboardBuilder = () => {
     : 0;
 
   return (
+  <>
     <DashboardWrapper>
       {isVerticalFilterBarVisible && (
         <ResizableSidebar
@@ -623,12 +626,12 @@ const DashboardBuilder = () => {
           {renderChild}
         </ResizableSidebar>
       )}
+
       <StyledHeader
         data-test="dashboard-header-wrapper"
         ref={headerRef}
         filterBarWidth={headerFilterBarWidth}
       >
-        {/* @ts-ignore */}
         <Droppable
           data-test="top-level-tabs"
           className={cx(!topLevelTabs && editMode && 'empty-droptarget')}
@@ -639,13 +642,13 @@ const DashboardBuilder = () => {
           orientation="column"
           onDrop={handleDrop}
           editMode={editMode}
-          // you cannot drop on/displace tabs if they already exist
           disableDragDrop={!!topLevelTabs}
           style={draggableStyle}
         >
           {renderDraggableContent}
         </Droppable>
       </StyledHeader>
+
       <StyledContent fullSizeChartId={fullSizeChartId}>
         {!editMode &&
           !topLevelTabs &&
@@ -667,6 +670,7 @@ const DashboardBuilder = () => {
               image="dashboard.svg"
             />
           )}
+
         <DashboardContentWrapper
           data-test="dashboard-content-wrapper"
           className={cx('dashboard', editMode && 'dashboard--editing')}
@@ -706,10 +710,12 @@ const DashboardBuilder = () => {
             ) : (
               <Loading />
             )}
+
             {editMode && <BuilderComponentPane topOffset={barTopOffset} />}
           </StyledDashboardContent>
         </DashboardContentWrapper>
       </StyledContent>
+
       {dashboardIsSaving && (
         <Loading
           css={css`
@@ -720,7 +726,12 @@ const DashboardBuilder = () => {
         />
       )}
     </DashboardWrapper>
-  );
+
+    {/* AI ASSISTANT FLOATING PANEL */}
+    <AiAssistantPanel />
+  </>
+);
+
 };
 
 export default memo(DashboardBuilder);
