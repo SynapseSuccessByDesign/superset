@@ -667,6 +667,26 @@ const RightMenu = ({
             </Tag>
           );
         })()}
+      {/* AI Assistant Button - Only show for logged-in users */}
+      {!navbarRight.user_is_anonymous && (
+        <button
+          style={{
+            marginLeft: '12px',
+            padding: '6px 14px',
+            borderRadius: '8px',
+            border: 'none',
+            cursor: 'pointer',
+            background: '#dbe7ea',
+            color: '#000000',
+            fontWeight: 600,
+          }}
+          onClick={() => {
+            (window as any).__TOGGLE_AI__?.();
+          }}
+        >
+          AI Assistant
+        </button>
+      )}
       <Menu
         css={css`
           display: flex;

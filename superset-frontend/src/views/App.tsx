@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+import AiAssistantPanel from "../ai/AiAssistantPanel";
 import { Suspense, useEffect } from 'react';
 import { hot } from 'react-hot-loader/root';
 import {
@@ -104,6 +105,9 @@ const App = () => (
         ))}
       </Switch>
       <ToastContainer />
+             
+        {/* Mount AI globally - INSIDE providers so Redux is available */}
+        <AiAssistantPanel />
     </RootContextProviders>
   </Router>
 );
