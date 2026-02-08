@@ -43,9 +43,11 @@ body {
 }
 
 .chat-layout {
-  display: flex;
-  height: 100vh;
+ display: flex;
+  height: 100%;
+  width: 100%;
   position: relative;
+  overflow: hidden;
 }
 
 .chat-layout::before {
@@ -68,13 +70,15 @@ body {
 
 /* ========== SIDEBAR ========== */
 .chat-sidebar {
-  width: 280px;
-  background: #0d1117;
+ width: 180px; /* Narrower sidebar */
+  min-width: 180px;
+  background: #ffffff;
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   position: relative;
   z-index: 10;
+  flex-shrink: 0;
 }
 
 .sidebar-header {
@@ -196,12 +200,13 @@ body {
 
 /* ========== MAIN CHAT ========== */
 .chat-main {
-  flex: 1;
+ flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  background: #0a0e17;
+  background: #f5f7fa;
+  min-width: 0; /* Critical for flex child */
 }
 
 .chat-header {
@@ -533,25 +538,26 @@ body {
 
 /* ========== INPUT ========== */
 .chat-input {
-  padding: 24px 32px;
+ padding: 16px 20px; /* Reduced padding */
   border-top: 1px solid var(--border-color);
   display: flex;
-  gap: 16px;
-  background: #111827;
+  gap: 12px;
+  background: #ffffff;
   flex-shrink: 0;
 }
 
 .chat-input textarea {
-  flex: 1;
-  background: #1a2030;
+flex: 1;
+  min-width: 0; /* Critical - prevents overflow */
+  background: #ffffff;
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 12px 16px;
+  border-radius: 8px;
+  padding: 10px 14px;
   font-size: 14px;
   font-family: 'DM Sans', sans-serif;
   color: var(--text-primary);
   resize: none;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   line-height: 1.4;
   max-height: 120px;
 }
@@ -568,18 +574,17 @@ body {
 }
 
 .chat-input button {
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+background: #20a7c9;
   color: white;
   border: none;
-  padding: 0 32px;
-  border-radius: 16px;
+  padding: 0 24px; /* Reduced padding */
+  border-radius: 8px;
   font-weight: 600;
-  font-size: 15px;
+  font-size: 14px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(32, 167, 201, 0.3);
-  position: relative;
-  overflow: hidden;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .chat-input button::before {
