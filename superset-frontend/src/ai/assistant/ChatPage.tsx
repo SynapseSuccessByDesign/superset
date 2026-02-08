@@ -397,11 +397,6 @@ const handleShare = (messageIndex: number) => {
           ))}
         </div>
 
-        <div className="sidebar-footer">
-          <button className="logout-btn" disabled>
-          Superset Session Active
-        </button>
-        </div>
       </aside>
 
       {/* MAIN */}

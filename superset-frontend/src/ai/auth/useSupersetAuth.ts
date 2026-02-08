@@ -14,32 +14,37 @@ export default function useSupersetAuth() {
         const email = bootstrap?.user?.email;
 
         if (!email) {
-          console.error("Superset user email not found");
+          console.error("❌ Superset user email not found");
           setLoading(false);
           return;
         }
 
-        console.log("Auto login using Superset user:", email);
+        console.log("🔐 Auto login using Superset user:", email);
+
+        const formData = new URLSearchParams();
+        formData.append("username", email);
+        formData.append("password", "dummy_password");
 
         const res = await fetch(`${API_BASE}/auth/login`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: email,
-            password: "dummy_password",   // backend ignores / maps internally
-          }),
+          headers: { 
+            "Content-Type": "application/x-www-form-urlencoded" 
+          },
+          body: formData,
         });
 
         if (!res.ok) {
-          console.error("Backend login failed");
+          const error = await res.text();
+          console.error("❌ Backend login failed:", res.status, error);
           setLoading(false);
           return;
         }
 
         const data = await res.json();
+        console.log("✅ Login successful, token received");
         setToken(data.access_token);
       } catch (e) {
-        console.error("Auto login error:", e);
+        console.error("❌ Auto login error:", e);
       } finally {
         setLoading(false);
       }
