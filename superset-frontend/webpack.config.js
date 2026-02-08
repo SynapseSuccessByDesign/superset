@@ -355,6 +355,13 @@ const config = {
           additionalCode: 'var define = false;',
         },
       },
+	  {
+  test: /\.m?js$/,
+  resolve: {
+    fullySpecified: false,
+  },
+  type: 'javascript/auto',
+},
       {
         test: /node_modules\/(@deck\.gl|@luma\.gl).*\.js$/,
         loader: 'imports-loader',
