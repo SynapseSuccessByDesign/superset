@@ -667,26 +667,36 @@ const RightMenu = ({
             </Tag>
           );
         })()}
-      {/* AI Assistant Button - Only show for logged-in users */}
-      {!navbarRight.user_is_anonymous && (
-        <button
-          style={{
-            marginLeft: '12px',
-            padding: '6px 14px',
-            borderRadius: '8px',
-            border: 'none',
-            cursor: 'pointer',
-            background: '#dbe7ea',
-            color: '#000000',
-            fontWeight: 600,
-          }}
-          onClick={() => {
-            (window as any).__TOGGLE_AI__?.();
-          }}
-        >
-          AI Assistant
-        </button>
-      )}
+{!navbarRight.user_is_anonymous && (
+  <button
+    style={{
+      marginLeft: '8px',
+      padding: '4px 12px',
+      borderRadius: '4px',
+      border: '1px solid #d9d9d9',
+      cursor: 'pointer',
+      background: '#ffffff',
+      color: '#000000',
+      fontSize: '14px',
+      fontWeight: 500,
+      height: '32px',
+      transition: 'all 0.2s',
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.borderColor = '#20a7c9';
+      e.currentTarget.style.color = '#20a7c9';
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.borderColor = '#d9d9d9';
+      e.currentTarget.style.color = '#000000';
+    }}
+    onClick={() => {
+      (window as any).__TOGGLE_AI__?.();
+    }}
+  >
+    AI Assistant
+  </button>
+)}
       <Menu
         css={css`
           display: flex;

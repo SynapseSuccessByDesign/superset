@@ -1,33 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-:root {
-  /* Backgrounds */
-  --bg-primary: #0a0e17;
-  --bg-secondary: #111827;
-  --bg-tertiary: #1a2030;
-
-  /* Borders */
-  --border-color: rgba(32, 167, 201, 0.22);
-  --border-hover: rgba(32, 167, 201, 0.4);
-
-  /* Accents (Copilot / Fluent Blue) */
-  --accent-primary: #2563eb;
-  --accent-secondary: #60a5fa;
-
-  /* Text */
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-
-  /* States */
-  --success: #16a34a;
-  --warning: #f59e0b;
-  --error: #dc2626;
-
-  /* Glow */
-  --glow: rgba(32, 167, 201, 0.25);
-}
-
 * {
   box-sizing: border-box;
 }
@@ -789,31 +761,16 @@ background: #20a7c9;
 ================================ */
 
 :root {
-  /* Backgrounds */
-  --bg-primary: #f5f7fa;
+ --bg-primary: #f5f7fa;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #ffffff;
-
-  /* Borders */
-  --border-color: rgba(0, 0, 0, 0.08);
-  --border-hover: rgba(0, 0, 0, 0.16);
-
-  /* Superset / Ant Design Blue */
+  --border-color: rgba(0, 0, 0, 0.06);
+  --border-hover: rgba(0, 0, 0, 0.12);
   --accent-primary: #20a7c9;
---accent-secondary: #3fbcd9;
-
-  /* Text */
+  --accent-secondary: #1fa0c1;
   --text-primary: #1f2937;
   --text-secondary: #4b5563;
   --text-muted: #6b7280;
-
-  /* States */
-  --success: #16a34a;
-  --warning: #d97706;
-  --error: #dc2626;
-
-  /* Glow (much softer) */
-  --glow: rgba(32, 167, 201, 0.25);
+  --glow: rgba(32, 167, 201, 0.15);
 }
 
 /* Body + main surfaces */
