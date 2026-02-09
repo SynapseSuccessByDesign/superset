@@ -404,7 +404,7 @@ const handleShare = (messageIndex: number) => {
         <div className="chat-header center">
         <div className="header-brand">
           <div className="header-text">
-            <h1>Superset AI Assistant</h1>
+            <h2>AI Assistant</h2>
 
             <p className="welcome-line">
               Welcome! This AI assistant lets you explore SLAPI system data using simple natural language, turning your questions into insights, trends, and visualizations across multiple data sources.
