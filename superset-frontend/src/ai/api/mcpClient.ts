@@ -17,7 +17,8 @@ async function handle(res: Response) {
 export async function queryMcp(
   token: string,
   question: string,
-  conversationId: string
+  conversationId: string,
+  dashboardContext?: any  // ✅ NEW
 ) {
   const res = await fetch(`${MCP_BASE}/mcp/query-natural`, {
     method: "POST",
@@ -28,6 +29,7 @@ export async function queryMcp(
     body: JSON.stringify({
       question,
       conversation_id: conversationId,
+      dashboard_context: dashboardContext,  // ✅ NEW
     }),
   });
 

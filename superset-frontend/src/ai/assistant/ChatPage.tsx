@@ -8,6 +8,51 @@ import ReactMarkdown from "react-markdown";
 
 const API_BASE_URL = "http://127.0.0.1:8000";
 
+// Add this helper at top of file after imports
+async function getDashboardContext(token: string): Promise<any> {
+  // Check if we're on a dashboard page
+  const match = window.location.pathname.match(/\/superset\/dashboard\/([^\/\?]+)/);
+  if (!match) {
+    return null;
+  }
+
+  const dashboardId = match[1];
+
+  try {
+    // Fetch dashboard metadata from Superset API
+    const res = await fetch(`/api/v1/dashboard/${dashboardId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!res.ok) {
+      console.error('Failed to fetch dashboard:', res.status);
+      return null;
+    }
+
+    const data = await res.json();
+    const dashboard = data.result;
+
+    return {
+      dashboard_id: dashboardId,
+      dashboard_title: dashboard.dashboard_title,
+      charts: (dashboard.slices || []).map((slice: any) => ({
+        id: slice.id?.toString(),
+        name: slice.slice_name,
+        type: slice.viz_type,
+        data: { rows: [], columns: [] } // Chart data would need separate API calls
+      })),
+      filters: {},
+      date_range: ''
+    };
+  } catch (error) {
+    console.error('Error fetching dashboard context:', error);
+    return null;
+  }
+}
+
 // Add after imports
 const FeedbackModal = ({ 
   type, 
@@ -221,6 +266,13 @@ const [shareModal, setShareModal] = useState<{
 
     const userText = input;
 
+    // ✅ Extract dashboard context if on dashboard page
+    const dashboardContext = await getDashboardContext(token);
+
+    if (dashboardContext) {
+    console.log('Dashboard context extracted:', dashboardContext);
+  }
+
     // Persist USER message
     setConversations((prev) =>
       prev.map((c) =>
@@ -245,8 +297,8 @@ const [shareModal, setShareModal] = useState<{
     setError(null);
 
     try {
-      const res = await queryMcp(token, userText, activeConvId);
-
+      const res = await queryMcp(token, userText, activeConvId, dashboardContext);  // ✅ Pass context
+    
       // Persist ASSISTANT message
       setConversations((prev) =>
         prev.map((c) =>
