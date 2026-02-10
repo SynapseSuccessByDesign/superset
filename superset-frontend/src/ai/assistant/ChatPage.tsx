@@ -99,7 +99,7 @@ async function getDashboardContext(token: string) {
 
     validCharts.sort((a, b) => scoreChart(b) - scoreChart(a));
     const top3 = validCharts.slice(0, 3);
-    
+
     console.log(`⭐ Top 3 charts: ${top3.map((c) => c?.name || 'Unknown').join(", ")}`);
 
     // 4. Fetch data for top 3 charts ONLY
@@ -160,7 +160,7 @@ async function getDashboardContext(token: string) {
             name: chart.name,
             type: chart.type,
             row_count: rows.length,
-            sample_data: rows.slice(0, 30), // Send 30 rows for analysis
+            sample_data: rows.slice(0, 100), // Send 30 rows for analysis
           };
         } catch (err) {
           console.error(`Data fetch exception for ${chart.name}:`, err);
