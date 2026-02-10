@@ -8,9 +8,13 @@ import ReactMarkdown from "react-markdown";
 
 const API_BASE_URL = "http://127.0.0.1:8000";
 
+// ============================================================================
+// MODIFIED getDashboardContext() - Fetch ALL charts instead of top 3
+// ============================================================================
+
 async function getDashboardContext(token: string) {
   try {
-    console.log("🔍 Extracting dashboard context (Top-3 with data)...");
+    console.log("🔍 Extracting dashboard context (ALL CHARTS with data)...");
 
     const dashId =
       (window as any)?.dashboardInfo?.id ||
@@ -44,7 +48,7 @@ async function getDashboardContext(token: string) {
       .map((c: any) => c.meta?.chartId)
       .filter(Boolean);
 
-    console.log(`📊 Found ${chartIds.length} charts`);
+    console.log(`📊 Found ${chartIds.length} charts - fetching ALL`);  // ✅ CHANGED
 
     // 2. Fetch chart metadata for ALL charts
     const chartMetadata = await Promise.all(
@@ -59,7 +63,6 @@ async function getDashboardContext(token: string) {
           const chartJson = await chartRes.json();
           const chart = chartJson.result;
 
-          // Parse params to get query config
           let params = {};
           try {
             params = JSON.parse(chart.params || "{}");
@@ -84,27 +87,13 @@ async function getDashboardContext(token: string) {
 
     const validCharts = chartMetadata.filter(Boolean);
 
-    // 3. Prioritize and select top 3 charts
-    const scoreChart = (c: any) => {
-      let score = 0;
-      
-      // Prioritize by chart type
-      if (c.type === "big_number") score += 100;
-      if (c.type.includes("line") || c.type.includes("area")) score += 80;
-      if (c.type === "table") score += 60;
-      if (c.type.includes("pie") || c.type.includes("bar")) score += 50;
-      
-      return score;
-    };
+    // ✅ REMOVED: Top-3 prioritization logic
+    // ✅ CHANGED: Fetch data for ALL charts instead of top 3
+    console.log(`⭐ Fetching data for all ${validCharts.length} charts`);
 
-    validCharts.sort((a, b) => scoreChart(b) - scoreChart(a));
-    const top3 = validCharts.slice(0, 3);
-
-    console.log(`⭐ Top 3 charts: ${top3.map((c) => c?.name || 'Unknown').join(", ")}`);
-
-    // 4. Fetch data for top 3 charts ONLY
+    // 4. Fetch data for ALL charts
     const enrichedCharts = await Promise.all(
-      top3.map(async (chart: any) => {
+      validCharts.map(async (chart: any) => {  // ✅ CHANGED: was "top3"
         try {
           console.log(`🔍 Fetching data for: ${chart.name}`);
 
@@ -120,7 +109,7 @@ async function getDashboardContext(token: string) {
                 metrics: chart.params.metric
                   ? [chart.params.metric]
                   : chart.params.metrics || [],
-                row_limit: 100,
+                row_limit: 1000,
                 time_range: chart.params.time_range || "No filter",
                 granularity: chart.params.granularity_sqla || null,
                 filters: chart.params.adhoc_filters || [],
@@ -160,7 +149,7 @@ async function getDashboardContext(token: string) {
             name: chart.name,
             type: chart.type,
             row_count: rows.length,
-            sample_data: rows.slice(0, 100), // Send 30 rows for analysis
+            sample_data: rows.slice(0, 100),
           };
         } catch (err) {
           console.error(`Data fetch exception for ${chart.name}:`, err);
@@ -186,9 +175,8 @@ async function getDashboardContext(token: string) {
     };
 
     console.log("✅ Dashboard context ready");
-    console.log(
-      `   Charts with data: ${enrichedCharts.filter((c) => c.row_count > 0).length}/3`
-    );
+    console.log(`   Total charts: ${validCharts.length}`);  // ✅ CHANGED
+    console.log(`   Charts with data: ${enrichedCharts.filter((c) => c.row_count > 0).length}/${validCharts.length}`);  // ✅ CHANGED
 
     return context;
   } catch (e) {
@@ -368,6 +356,8 @@ const [shareModal, setShareModal] = useState<{
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [lastDashboardSent, setLastDashboardSent] = useState<string | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -400,10 +390,11 @@ const [shareModal, setShareModal] = useState<{
   );
 }
 
-  /* =========================
-     Send
-  ========================= */
-  const send = async () => {
+// ============================================================================
+// MODIFIED send() function - Only fetch context if dashboard changed
+// ============================================================================
+
+const send = async () => {
   if (!token || !input.trim() || loading) return;
 
   const userText = input;
@@ -415,17 +406,32 @@ const [shareModal, setShareModal] = useState<{
 
   let dashboardContext = null;
 
+  // ✅ CHANGED: Smart caching logic
   if (window.location.pathname.includes("/superset/dashboard/")) {
-    dashboardContext = await getDashboardContext(token);
+    const currentDashboardUrl = window.location.pathname;
+    
+    // Only fetch context if dashboard changed or first time
+    if (currentDashboardUrl !== lastDashboardSent) {
+      console.log("🆕 New dashboard detected - fetching ALL charts context");
+      dashboardContext = await getDashboardContext(token);
+      
+      if (dashboardContext) {
+        setLastDashboardSent(currentDashboardUrl);  // Track that we sent context for this dashboard
+        console.log("💾 Dashboard context will be cached in backend");
+      }
+    } else {
+      console.log("♻️ Same dashboard - backend will reuse cached context");
+      dashboardContext = null;  // Backend will use cached version
+    }
   }
 
-  if (isDashboardQuery && !dashboardContext) {
+  if (isDashboardQuery && !dashboardContext && !lastDashboardSent) {
     setError("Please navigate to a dashboard first to ask questions about it.");
     setLoading(false);
     return;
   }
 
-  const sourceHint = dashboardContext ? "superset" : "auto";
+  const sourceHint = lastDashboardSent ? "superset" : "auto";  // ✅ CHANGED: Check lastDashboardSent instead
 
   if (dashboardContext) {
     console.log("📦 Dashboard context extracted:", dashboardContext);
@@ -451,7 +457,7 @@ const [shareModal, setShareModal] = useState<{
       token,
       userText,
       activeConvId,
-      dashboardContext,
+      dashboardContext,  // ✅ Will be null for subsequent messages
       sourceHint
     );
 
