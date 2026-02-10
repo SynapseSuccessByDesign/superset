@@ -8,47 +8,191 @@ import ReactMarkdown from "react-markdown";
 
 const API_BASE_URL = "http://127.0.0.1:8000";
 
-// Add this helper at top of file after imports
-async function getDashboardContext(token: string): Promise<any> {
-  // Check if we're on a dashboard page
-  const match = window.location.pathname.match(/\/superset\/dashboard\/([^\/\?]+)/);
-  if (!match) {
-    return null;
-  }
-
-  const dashboardId = match[1];
-
+async function getDashboardContext(token: string) {
   try {
-    // Fetch dashboard metadata from Superset API
-    const res = await fetch(`/api/v1/dashboard/${dashboardId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    console.log("🔍 Extracting dashboard context (Top-3 with data)...");
 
-    if (!res.ok) {
-      console.error('Failed to fetch dashboard:', res.status);
+    const dashId =
+      (window as any)?.dashboardInfo?.id ||
+      window.location.pathname.match(/dashboard\/([^\/\?]+)/)?.[1];
+
+    if (!dashId) {
+      console.log("❌ No dashboard ID found");
       return null;
     }
 
-    const data = await res.json();
-    const dashboard = data.result;
+    console.log("✅ Dashboard ID:", dashId);
 
-    return {
-      dashboard_id: dashboardId,
-      dashboard_title: dashboard.dashboard_title,
-      charts: (dashboard.slices || []).map((slice: any) => ({
-        id: slice.id?.toString(),
-        name: slice.slice_name,
-        type: slice.viz_type,
-        data: { rows: [], columns: [] } // Chart data would need separate API calls
-      })),
-      filters: {},
-      date_range: ''
+    // 1. Fetch dashboard metadata
+    const dashRes = await fetch(`/api/v1/dashboard/${dashId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!dashRes.ok) return null;
+
+    const dashJson = await dashRes.json();
+    const dashboard = dashJson?.result;
+
+    // Extract chart IDs from position_json
+    const positionData =
+      typeof dashboard.position_json === "string"
+        ? JSON.parse(dashboard.position_json)
+        : dashboard.position_json;
+
+    const chartIds = Object.values(positionData || {})
+      .filter((item: any) => item.type === "CHART")
+      .map((c: any) => c.meta?.chartId)
+      .filter(Boolean);
+
+    console.log(`📊 Found ${chartIds.length} charts`);
+
+    // 2. Fetch chart metadata for ALL charts
+    const chartMetadata = await Promise.all(
+      chartIds.map(async (chartId: number) => {
+        try {
+          const chartRes = await fetch(`/api/v1/chart/${chartId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (!chartRes.ok) return null;
+
+          const chartJson = await chartRes.json();
+          const chart = chartJson.result;
+
+          // Parse params to get query config
+          let params = {};
+          try {
+            params = JSON.parse(chart.params || "{}");
+          } catch (e) {
+            console.warn(`Failed to parse params for chart ${chartId}`);
+          }
+
+          return {
+            id: chartId,
+            name: chart.slice_name,
+            type: chart.viz_type,
+            datasource_id: chart.datasource_id,
+            datasource_type: chart.datasource_type,
+            params: params,
+          };
+        } catch (err) {
+          console.warn(`Chart ${chartId} metadata fetch failed`);
+          return null;
+        }
+      })
+    );
+
+    const validCharts = chartMetadata.filter(Boolean);
+
+    // 3. Prioritize and select top 3 charts
+    const scoreChart = (c: any) => {
+      let score = 0;
+      
+      // Prioritize by chart type
+      if (c.type === "big_number") score += 100;
+      if (c.type.includes("line") || c.type.includes("area")) score += 80;
+      if (c.type === "table") score += 60;
+      if (c.type.includes("pie") || c.type.includes("bar")) score += 50;
+      
+      return score;
     };
-  } catch (error) {
-    console.error('Error fetching dashboard context:', error);
+
+    validCharts.sort((a, b) => scoreChart(b) - scoreChart(a));
+    const top3 = validCharts.slice(0, 3);
+    
+    console.log(`⭐ Top 3 charts: ${top3.map((c) => c?.name || 'Unknown').join(", ")}`);
+
+    // 4. Fetch data for top 3 charts ONLY
+    const enrichedCharts = await Promise.all(
+      top3.map(async (chart: any) => {
+        try {
+          console.log(`🔍 Fetching data for: ${chart.name}`);
+
+          // Build query from params
+          const queryBody = {
+            datasource: {
+              id: chart.datasource_id,
+              type: chart.datasource_type,
+            },
+            queries: [
+              {
+                columns: chart.params.groupby || [],
+                metrics: chart.params.metric
+                  ? [chart.params.metric]
+                  : chart.params.metrics || [],
+                row_limit: 100,
+                time_range: chart.params.time_range || "No filter",
+                granularity: chart.params.granularity_sqla || null,
+                filters: chart.params.adhoc_filters || [],
+              },
+            ],
+            result_format: "json",
+            result_type: "full",
+          };
+
+          const dataRes = await fetch(`/api/v1/chart/data`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(queryBody),
+          });
+
+          if (!dataRes.ok) {
+            console.warn(`Data fetch failed for ${chart.name}: ${dataRes.status}`);
+            return {
+              id: chart.id.toString(),
+              name: chart.name,
+              type: chart.type,
+              row_count: 0,
+              sample_data: [],
+            };
+          }
+
+          const dataJson = await dataRes.json();
+          const rows = dataJson?.result?.[0]?.data || [];
+
+          console.log(`✅ ${chart.name}: ${rows.length} rows`);
+
+          return {
+            id: chart.id.toString(),
+            name: chart.name,
+            type: chart.type,
+            row_count: rows.length,
+            sample_data: rows.slice(0, 30), // Send 30 rows for analysis
+          };
+        } catch (err) {
+          console.error(`Data fetch exception for ${chart.name}:`, err);
+          return {
+            id: chart.id.toString(),
+            name: chart.name,
+            type: chart.type,
+            row_count: 0,
+            sample_data: [],
+          };
+        }
+      })
+    );
+
+    const context = {
+      source: "superset_dashboard",
+      dashboard_id: dashId.toString(),
+      dashboard_title: dashboard.dashboard_title,
+      chart_count: validCharts.length,
+      charts: enrichedCharts,
+      filters: dashboard.metadata?.native_filter_configuration || {},
+      extracted_at: new Date().toISOString(),
+    };
+
+    console.log("✅ Dashboard context ready");
+    console.log(
+      `   Charts with data: ${enrichedCharts.filter((c) => c.row_count > 0).length}/3`
+    );
+
+    return context;
+  } catch (e) {
+    console.error("❌ Dashboard extraction failed:", e);
     return null;
   }
 }
@@ -256,69 +400,77 @@ const [shareModal, setShareModal] = useState<{
   );
 }
 
-
   /* =========================
      Send
   ========================= */
   const send = async () => {
-    if (!token || !input.trim() || loading) return;
+  if (!token || !input.trim() || loading) return;
 
+  const userText = input;
 
-    const userText = input;
+  const isDashboardQuery =
+    /dashboard|summarize|summary|this page|this chart|why|spike|trend|compare|top|highest|lowest/i.test(userText);
 
-    // ✅ Extract dashboard context if on dashboard page
-    const dashboardContext = await getDashboardContext(token);
+  setLoading(true);
 
-    if (dashboardContext) {
-    console.log('Dashboard context extracted:', dashboardContext);
+  let dashboardContext = null;
+
+  if (window.location.pathname.includes("/superset/dashboard/")) {
+    dashboardContext = await getDashboardContext(token);
   }
 
-    // Persist USER message
+  if (isDashboardQuery && !dashboardContext) {
+    setError("Please navigate to a dashboard first to ask questions about it.");
+    setLoading(false);
+    return;
+  }
+
+  const sourceHint = dashboardContext ? "superset" : "auto";
+
+  if (dashboardContext) {
+    console.log("📦 Dashboard context extracted:", dashboardContext);
+  }
+
+  setConversations((prev) =>
+    prev.map((c) =>
+      c.id === activeConvId
+        ? {
+            ...c,
+            title: c.messages.length === 0 ? userText.slice(0, 40) : c.title,
+            messages: [...c.messages, { role: "user", content: userText }],
+          }
+        : c
+    )
+  );
+
+  setInput("");
+  setError(null);
+
+  try {
+    const res = await queryMcp(
+      token,
+      userText,
+      activeConvId,
+      dashboardContext,
+      sourceHint
+    );
+
     setConversations((prev) =>
       prev.map((c) =>
         c.id === activeConvId
           ? {
               ...c,
-              title:
-                c.messages.length === 0
-                  ? userText.slice(0, 40)
-                  : c.title,
-              messages: [
-                ...c.messages,
-                { role: "user", content: userText },
-              ],
+              messages: [...c.messages, { ...res, role: "assistant" }],
             }
           : c
       )
     );
-
-    setInput("");
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await queryMcp(token, userText, activeConvId, dashboardContext);  // ✅ Pass context
-    
-      // Persist ASSISTANT message
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === activeConvId
-            ? {
-                ...c,
-                messages: [
-                  ...c.messages,
-                  { ...res, role: "assistant" },
-                ],
-              }
-            : c
-        )
-      );
-    } catch (e: any) {
-      setError(e.message || "Query failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (e: any) {
+    setError(e.message || "Query failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Handle Enter key to send
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

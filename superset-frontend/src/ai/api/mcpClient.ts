@@ -18,7 +18,8 @@ export async function queryMcp(
   token: string,
   question: string,
   conversationId: string,
-  dashboardContext?: any  // ✅ NEW
+  dashboardContext?: any,
+  sourceHint?: string  // ✅ ADD THIS
 ) {
   const res = await fetch(`${MCP_BASE}/mcp/query-natural`, {
     method: "POST",
@@ -29,7 +30,8 @@ export async function queryMcp(
     body: JSON.stringify({
       question,
       conversation_id: conversationId,
-      dashboard_context: dashboardContext,  // ✅ NEW
+      dashboard_context: dashboardContext,
+      source_hint: sourceHint,  // ✅ ADD THIS
     }),
   });
 
