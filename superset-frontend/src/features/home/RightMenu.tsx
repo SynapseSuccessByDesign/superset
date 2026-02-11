@@ -668,34 +668,38 @@ const RightMenu = ({
           );
         })()}
 {!navbarRight.user_is_anonymous && (
-  <button
-    style={{
-      marginLeft: '8px',
-      padding: '4px 12px',
-      borderRadius: '4px',
-      border: '1px solid #d9d9d9',
-      cursor: 'pointer',
-      background: '#ffffff',
-      color: '#000000',
-      fontSize: '14px',
-      fontWeight: 500,
-      height: '32px',
-      transition: 'all 0.2s',
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.borderColor = '#20a7c9';
-      e.currentTarget.style.color = '#20a7c9';
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.borderColor = '#d9d9d9';
-      e.currentTarget.style.color = '#000000';
-    }}
-    onClick={() => {
-      (window as any).__TOGGLE_AI__?.();
-    }}
-  >
-    AI Assistant
-  </button>
+   <button
+  style={{
+    marginLeft: '8px',
+    padding: '4px 12px',
+    borderRadius: '6px',
+    border: '1px solid #20a7c9',
+    cursor: 'pointer',
+    background: '#20a7c9',
+    color: '#323232',
+    fontSize: '14px',
+    fontWeight: 600,
+    height: '32px',
+    transition: 'all 0.2s ease',
+  }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.background = '#1a8aa8';
+    e.currentTarget.style.borderColor = '#1a8aa8';
+    e.currentTarget.style.transform = 'translateY(-1px)';
+    e.currentTarget.style.boxShadow = '0 4px 8px rgba(32, 167, 201, 0.3)';
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.background = '#20a7c9';
+    e.currentTarget.style.borderColor = '#20a7c9';
+    e.currentTarget.style.transform = 'translateY(0)';
+    e.currentTarget.style.boxShadow = 'none';
+  }}
+  onClick={() => {
+    (window as any).__TOGGLE_AI__?.();
+  }}
+>
+  AI Assistant
+</button>
 )}
       <Menu
         css={css`

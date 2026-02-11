@@ -9,12 +9,12 @@ import ReactMarkdown from "react-markdown";
 const API_BASE_URL = "http://127.0.0.1:8000";
 
 // ============================================================================
-// MODIFIED getDashboardContext() - Fetch ALL charts instead of top 3
+// MODIFIED getDashboardContext() - Now accepts supersetToken
 // ============================================================================
 
-async function getDashboardContext(token: string) {
+async function getDashboardContext(mcpToken: string, supersetToken: string | null) {
   try {
-    console.log("🔍 Extracting dashboard context (ALL CHARTS with data)...");
+    console.log("🔍 Extracting dashboard metadata (NO data fetch)...");
 
     const dashId =
       (window as any)?.dashboardInfo?.id ||
@@ -27,10 +27,17 @@ async function getDashboardContext(token: string) {
 
     console.log("✅ Dashboard ID:", dashId);
 
+    // Build headers - use Superset token if available
+    const headers: any = {};
+    if (supersetToken) {
+      headers.Authorization = `Bearer ${supersetToken}`;
+      console.log("🔑 Using Superset access token");
+    } else {
+      console.log("🍪 Using cookie authentication (fallback)");
+    }
+
     // 1. Fetch dashboard metadata
-    const dashRes = await fetch(`/api/v1/dashboard/${dashId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const dashRes = await fetch(`/api/v1/dashboard/${dashId}`, { headers });
 
     if (!dashRes.ok) return null;
 
@@ -48,15 +55,13 @@ async function getDashboardContext(token: string) {
       .map((c: any) => c.meta?.chartId)
       .filter(Boolean);
 
-    console.log(`📊 Found ${chartIds.length} charts - fetching ALL`);  // ✅ CHANGED
+    console.log(`📊 Found ${chartIds.length} charts - fetching metadata only`);
 
     // 2. Fetch chart metadata for ALL charts
     const chartMetadata = await Promise.all(
       chartIds.map(async (chartId: number) => {
         try {
-          const chartRes = await fetch(`/api/v1/chart/${chartId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const chartRes = await fetch(`/api/v1/chart/${chartId}`, { headers });
 
           if (!chartRes.ok) return null;
 
@@ -87,96 +92,19 @@ async function getDashboardContext(token: string) {
 
     const validCharts = chartMetadata.filter(Boolean);
 
-    // ✅ REMOVED: Top-3 prioritization logic
-    // ✅ CHANGED: Fetch data for ALL charts instead of top 3
-    console.log(`⭐ Fetching data for all ${validCharts.length} charts`);
-
-    // 4. Fetch data for ALL charts
-    const enrichedCharts = await Promise.all(
-      validCharts.map(async (chart: any) => {  // ✅ CHANGED: was "top3"
-        try {
-          console.log(`🔍 Fetching data for: ${chart.name}`);
-
-          // Build query from params
-          const queryBody = {
-            datasource: {
-              id: chart.datasource_id,
-              type: chart.datasource_type,
-            },
-            queries: [
-              {
-                columns: chart.params.groupby || [],
-                metrics: chart.params.metric
-                  ? [chart.params.metric]
-                  : chart.params.metrics || [],
-                row_limit: 1000,
-                time_range: chart.params.time_range || "No filter",
-                granularity: chart.params.granularity_sqla || null,
-                filters: chart.params.adhoc_filters || [],
-              },
-            ],
-            result_format: "json",
-            result_type: "full",
-          };
-
-          const dataRes = await fetch(`/api/v1/chart/data`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(queryBody),
-          });
-
-          if (!dataRes.ok) {
-            console.warn(`Data fetch failed for ${chart.name}: ${dataRes.status}`);
-            return {
-              id: chart.id.toString(),
-              name: chart.name,
-              type: chart.type,
-              row_count: 0,
-              sample_data: [],
-            };
-          }
-
-          const dataJson = await dataRes.json();
-          const rows = dataJson?.result?.[0]?.data || [];
-
-          console.log(`✅ ${chart.name}: ${rows.length} rows`);
-
-          return {
-            id: chart.id.toString(),
-            name: chart.name,
-            type: chart.type,
-            row_count: rows.length,
-            sample_data: rows.slice(0, 100),
-          };
-        } catch (err) {
-          console.error(`Data fetch exception for ${chart.name}:`, err);
-          return {
-            id: chart.id.toString(),
-            name: chart.name,
-            type: chart.type,
-            row_count: 0,
-            sample_data: [],
-          };
-        }
-      })
-    );
-
     const context = {
       source: "superset_dashboard",
       dashboard_id: dashId.toString(),
       dashboard_title: dashboard.dashboard_title,
       chart_count: validCharts.length,
-      charts: enrichedCharts,
+      charts: validCharts,
       filters: dashboard.metadata?.native_filter_configuration || {},
       extracted_at: new Date().toISOString(),
     };
 
-    console.log("✅ Dashboard context ready");
-    console.log(`   Total charts: ${validCharts.length}`);  // ✅ CHANGED
-    console.log(`   Charts with data: ${enrichedCharts.filter((c) => c.row_count > 0).length}/${validCharts.length}`);  // ✅ CHANGED
+    console.log("✅ Dashboard metadata extracted (no data fetch)");
+    console.log(`   Total charts: ${validCharts.length}`);
+    console.log(`   Metadata-only payload - backend will fetch data on-demand`);
 
     return context;
   } catch (e) {
@@ -311,7 +239,7 @@ type Conversation = {
    Component
 ========================= */
 export default function ChatPage() {
-  const { token, loading: authLoading } = useSupersetAuth();
+  const { token, supersetToken, loading: authLoading } = useSupersetAuth();
 
   // Add these state variables
   const [modalState, setModalState] = useState<{
@@ -391,7 +319,7 @@ const [shareModal, setShareModal] = useState<{
 }
 
 // ============================================================================
-// MODIFIED send() function - Only fetch context if dashboard changed
+// MODIFIED send() function - Pass supersetToken to getDashboardContext
 // ============================================================================
 
 const send = async () => {
@@ -406,22 +334,22 @@ const send = async () => {
 
   let dashboardContext = null;
 
-  // ✅ CHANGED: Smart caching logic
+  // ✅ CHANGED: Smart caching logic with supersetToken
   if (window.location.pathname.includes("/superset/dashboard/")) {
     const currentDashboardUrl = window.location.pathname;
     
     // Only fetch context if dashboard changed or first time
     if (currentDashboardUrl !== lastDashboardSent) {
       console.log("🆕 New dashboard detected - fetching ALL charts context");
-      dashboardContext = await getDashboardContext(token);
+      dashboardContext = await getDashboardContext(token, supersetToken);
       
       if (dashboardContext) {
-        setLastDashboardSent(currentDashboardUrl);  // Track that we sent context for this dashboard
+        setLastDashboardSent(currentDashboardUrl);
         console.log("💾 Dashboard context will be cached in backend");
       }
     } else {
       console.log("♻️ Same dashboard - backend will reuse cached context");
-      dashboardContext = null;  // Backend will use cached version
+      dashboardContext = null;
     }
   }
 
@@ -431,7 +359,7 @@ const send = async () => {
     return;
   }
 
-  const sourceHint = lastDashboardSent ? "superset" : "auto";  // ✅ CHANGED: Check lastDashboardSent instead
+  const sourceHint = lastDashboardSent ? "superset" : "auto";
 
   if (dashboardContext) {
     console.log("📦 Dashboard context extracted:", dashboardContext);
@@ -457,7 +385,7 @@ const send = async () => {
       token,
       userText,
       activeConvId,
-      dashboardContext,  // ✅ Will be null for subsequent messages
+      dashboardContext,
       sourceHint
     );
 
@@ -513,7 +441,7 @@ const send = async () => {
         },
         body: JSON.stringify({
           conversation_id: activeConvId,
-          request_id: `${activeConvId}-${messageIndex}`,  // Generate consistent ID
+          request_id: `${activeConvId}-${messageIndex}`,
           question: userQuestion,
           sql_generated: message.SQL || '',
           confidence: message.confidence || 0,
@@ -614,7 +542,7 @@ const handleShare = (messageIndex: number) => {
         <div className="chat-header center">
         <div className="header-brand">
           <div className="header-text">
-            <h2>AI Assistant</h2>
+            <h2 style = {{color: '#A9A9A9'}}>AI Assistant</h2>
 
             <p className="welcome-line">
               Welcome! This AI assistant lets you explore SLAPI system data using simple natural language, turning your questions into insights, trends, and visualizations across multiple data sources.

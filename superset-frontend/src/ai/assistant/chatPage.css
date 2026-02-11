@@ -865,11 +865,19 @@ button,
 .new-chat-btn,
 .chat-input button {
   background: #20a7c9 !important;
+  color: #ffffff !important;
   box-shadow: none !important;
+  transition: all 0.3s ease !important;
+  position: relative;
 }
 
-button:hover {
-  background: #3fbcd9 !important;
+button:hover,
+.new-chat-btn:hover,
+.chat-input button:hover {
+  background: #1a8aa8 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(32, 167, 201, 0.3) !important;
 }
 
 /* Remove Copilot glow */
