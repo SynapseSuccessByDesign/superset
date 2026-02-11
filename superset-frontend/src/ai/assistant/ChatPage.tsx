@@ -328,7 +328,7 @@ const send = async () => {
   const userText = input;
 
   const isDashboardQuery =
-    /dashboard|summarize|summary|this page|this chart|why|spike|trend|compare|top|highest|lowest/i.test(userText);
+    /this dashboard|this chart|this page|these charts|summarize dashboard|dashboard summary|what does this show/i.test(userText);
 
   setLoading(true);
 
