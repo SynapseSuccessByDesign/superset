@@ -326,45 +326,68 @@ const send = async () => {
   if (!token || !input.trim() || loading) return;
 
   const userText = input;
-
-  const isDashboardQuery =
-    /this dashboard|this chart|this page|these charts|summarize dashboard|dashboard summary|what does this show/i.test(userText);
-
   setLoading(true);
 
   let dashboardContext = null;
 
-  // ✅ CHANGED: Smart caching logic with supersetToken
+  // ✅ FIXED: Always send dashboard context when on dashboard page
   if (window.location.pathname.includes("/superset/dashboard/")) {
     const currentDashboardUrl = window.location.pathname;
     
-    // Only fetch context if dashboard changed or first time
+    // Only FETCH context if dashboard changed or first time
     if (currentDashboardUrl !== lastDashboardSent) {
-      console.log("🆕 New dashboard detected - fetching ALL charts context");
+      console.log("🆕 New dashboard detected - fetching context");
       dashboardContext = await getDashboardContext(token, supersetToken);
       
       if (dashboardContext) {
+        // Save the context for reuse in subsequent queries
+        localStorage.setItem('currentDashboardContext', JSON.stringify(dashboardContext));
         setLastDashboardSent(currentDashboardUrl);
-        console.log("💾 Dashboard context will be cached in backend");
+        console.log("💾 Dashboard context fetched and cached");
       }
     } else {
-      console.log("♻️ Same dashboard - backend will reuse cached context");
-      dashboardContext = null;
+      // ✅ Reuse the stored context instead of sending null
+      const stored = localStorage.getItem('currentDashboardContext');
+      if (stored) {
+        try {
+          dashboardContext = JSON.parse(stored);
+          console.log("♻️ Reusing cached dashboard context from localStorage");
+        } catch (e) {
+          console.error("Failed to parse cached dashboard context:", e);
+          // If parse fails, fetch fresh
+          dashboardContext = await getDashboardContext(token, supersetToken);
+          if (dashboardContext) {
+            localStorage.setItem('currentDashboardContext', JSON.stringify(dashboardContext));
+          }
+        }
+      } else {
+        // Cache missing - fetch fresh
+        console.log("⚠️ Cache missing - fetching fresh context");
+        dashboardContext = await getDashboardContext(token, supersetToken);
+        if (dashboardContext) {
+          localStorage.setItem('currentDashboardContext', JSON.stringify(dashboardContext));
+          setLastDashboardSent(currentDashboardUrl);
+        }
+      }
     }
+  } else {
+    // Not on dashboard - clear cached context
+    localStorage.removeItem('currentDashboardContext');
+    setLastDashboardSent(null);
+    console.log("ℹ️ Not on dashboard - context cleared");
   }
 
-  if (isDashboardQuery && !dashboardContext && !lastDashboardSent) {
-    setError("Please navigate to a dashboard first to ask questions about it.");
-    setLoading(false);
-    return;
-  }
-
-  const sourceHint = lastDashboardSent ? "superset" : "auto";
+  // Determine source hint based on whether we have dashboard context
+  const sourceHint = dashboardContext ? "superset" : "auto";
 
   if (dashboardContext) {
-    console.log("📦 Dashboard context extracted:", dashboardContext);
+    console.log("📦 Sending dashboard context to backend:", {
+      dashboard_id: dashboardContext.dashboard_id,
+      chart_count: dashboardContext.chart_count
+    });
   }
 
+  // Add user message to conversation
   setConversations((prev) =>
     prev.map((c) =>
       c.id === activeConvId
@@ -385,7 +408,7 @@ const send = async () => {
       token,
       userText,
       activeConvId,
-      dashboardContext,
+      dashboardContext, // ✅ Always send context when on dashboard (either fresh or cached)
       sourceHint
     );
 
