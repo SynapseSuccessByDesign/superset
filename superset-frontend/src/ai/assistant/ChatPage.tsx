@@ -2,11 +2,16 @@ import useSupersetAuth from "../auth/useSupersetAuth";
 import { queryMcp } from "../api/mcpClient";
 import { MCPResponse } from "../types";
 import "./ChatPage.css";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 
 
 const API_BASE_URL = "http://127.0.0.1:8000";
+
+// ✅ NEW: Generate unique session ID
+function generateSessionId() {
+  return `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
 
 // ============================================================================
 // MODIFIED getDashboardContext() - Now accepts supersetToken
@@ -288,6 +293,9 @@ type Conversation = {
 export default function ChatPage() {
   const { token, supersetToken, loading: authLoading } = useSupersetAuth();
 
+  // ✅ NEW: Generate unique conversation ID per session (not "conv-1")
+  const sessionConvId = useMemo(() => generateSessionId(), []);
+
   // Add these state variables
   const [modalState, setModalState] = useState<{
     show: boolean;
@@ -322,10 +330,11 @@ const [shareModal, setShareModal] = useState<{
 });
 
 
+  // ✅ FIXED: Use unique session ID
   const [conversations, setConversations] = useState<Conversation[]>([
-    { id: "conv-1", title: "New conversation", messages: [] },
+    { id: sessionConvId, title: "New conversation", messages: [] },
   ]);
-  const [activeConvId, setActiveConvId] = useState("conv-1");
+  const [activeConvId, setActiveConvId] = useState(sessionConvId);
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -340,6 +349,13 @@ const [shareModal, setShareModal] = useState<{
   conversations.find((c) => c.id === activeConvId) ??
   conversations[0];
 
+  // ✅ NEW: Clear localStorage on unmount (user closes assistant) - this gives fresh start on reopen
+  useEffect(() => {
+    return () => {
+      console.log("🧹 Cleaning up session on unmount");
+      localStorage.removeItem('currentDashboardContext');
+    };
+  }, []);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -579,7 +595,7 @@ const handleShare = (messageIndex: number) => {
           <button
             className="new-chat-btn"
             onClick={() => {
-              const id = `conv-${Date.now()}`;
+              const id = generateSessionId(); // ✅ Use unique ID generator
               setConversations([
                 { id, title: "New conversation", messages: [] },
                 ...conversations,
