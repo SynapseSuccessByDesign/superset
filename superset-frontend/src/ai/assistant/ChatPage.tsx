@@ -27,7 +27,6 @@ async function getDashboardContext(mcpToken: string, supersetToken: string | nul
 
     console.log("✅ Dashboard ID:", dashId);
 
-    // Build headers - use Superset token if available
     const headers: any = {};
     if (supersetToken) {
       headers.Authorization = `Bearer ${supersetToken}`;
@@ -37,33 +36,79 @@ async function getDashboardContext(mcpToken: string, supersetToken: string | nul
     }
 
     // 1. Fetch dashboard metadata
-    const dashRes = await fetch(`/api/v1/dashboard/${dashId}`, { headers });
+    const dashRes = await fetch(`/api/v1/dashboard/${dashId}`, { 
+      headers,
+      credentials: 'include'  // ✅ CRITICAL FIX
+    });
 
-    if (!dashRes.ok) return null;
+    if (!dashRes.ok) {
+      console.error(`❌ Dashboard API failed: ${dashRes.status}`);
+      return null;
+    }
 
     const dashJson = await dashRes.json();
     const dashboard = dashJson?.result;
 
-    // Extract chart IDs from position_json
-    const positionData =
-      typeof dashboard.position_json === "string"
-        ? JSON.parse(dashboard.position_json)
-        : dashboard.position_json;
+    if (!dashboard) {
+      console.error("❌ No dashboard result in response");
+      return null;
+    }
 
-    const chartIds = Object.values(positionData || {})
-      .filter((item: any) => item.type === "CHART")
-      .map((c: any) => c.meta?.chartId)
-      .filter(Boolean);
+    console.log("📊 Dashboard data:", {
+      title: dashboard.dashboard_title,
+      slices: dashboard.slices?.length,
+      has_position_json: !!dashboard.position_json
+    });
 
-    console.log(`📊 Found ${chartIds.length} charts - fetching metadata only`);
+    // ✅ FIX: Try both methods - slices API AND position_json
+    let chartIds: number[] = [];
+    
+    // Method 1: Use dashboard.slices (works for saved dashboards)
+    if (dashboard.slices && dashboard.slices.length > 0) {
+      chartIds = dashboard.slices.map((s: any) => s.id);
+      console.log(`📋 Found ${chartIds.length} charts from dashboard.slices`);
+    } 
+    // Method 2: Parse position_json (works for new/unsaved dashboards)
+    else if (dashboard.position_json) {
+      const positionData =
+        typeof dashboard.position_json === "string"
+          ? JSON.parse(dashboard.position_json)
+          : dashboard.position_json;
+
+      chartIds = Object.values(positionData || {})
+        .filter((item: any) => item.type === "CHART")
+        .map((c: any) => c.meta?.chartId)
+        .filter(Boolean);
+      
+      console.log(`📋 Found ${chartIds.length} charts from position_json`);
+    }
+
+    if (chartIds.length === 0) {
+      console.warn("⚠️ No charts found in dashboard");
+      return {
+        source: "superset_dashboard",
+        dashboard_id: dashId.toString(),
+        dashboard_title: dashboard.dashboard_title,
+        chart_count: 0,
+        charts: [],
+        filters: dashboard.metadata?.native_filter_configuration || {},
+        extracted_at: new Date().toISOString(),
+      };
+    }
 
     // 2. Fetch chart metadata for ALL charts
     const chartMetadata = await Promise.all(
       chartIds.map(async (chartId: number) => {
         try {
-          const chartRes = await fetch(`/api/v1/chart/${chartId}`, { headers });
+          const chartRes = await fetch(`/api/v1/chart/${chartId}`, { 
+            headers,
+            credentials: 'include'  // ✅ CRITICAL FIX
+          });
 
-          if (!chartRes.ok) return null;
+          if (!chartRes.ok) {
+            console.warn(`⚠️ Chart ${chartId} fetch failed: ${chartRes.status}`);
+            return null;
+          }
 
           const chartJson = await chartRes.json();
           const chart = chartJson.result;
@@ -84,7 +129,7 @@ async function getDashboardContext(mcpToken: string, supersetToken: string | nul
             params: params,
           };
         } catch (err) {
-          console.warn(`Chart ${chartId} metadata fetch failed`);
+          console.warn(`Chart ${chartId} metadata fetch failed:`, err);
           return null;
         }
       })
@@ -102,9 +147,11 @@ async function getDashboardContext(mcpToken: string, supersetToken: string | nul
       extracted_at: new Date().toISOString(),
     };
 
-    console.log("✅ Dashboard metadata extracted (no data fetch)");
+    console.log("✅ Dashboard metadata extracted");
     console.log(`   Total charts: ${validCharts.length}`);
-    console.log(`   Metadata-only payload - backend will fetch data on-demand`);
+    if (validCharts.length > 0) {
+      console.log(`   Chart names:`, validCharts.map((c: any) => c.name).join(", "));
+    }
 
     return context;
   } catch (e) {
