@@ -1118,3 +1118,76 @@ button:hover,
 .feedback-btn.mention:hover {
   background: #ede9fe;
 }
+
+/* ===============================
+   MESSAGE ACTION BAR
+=================================*/
+
+.message-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Base button */
+.action-btn {
+  border: none;
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #eef2f5;
+  color: #333;
+  transition: all 0.15s ease;
+}
+
+.action-btn:hover {
+  background: #e1e7ec;
+}
+
+/* Variants */
+.action-btn.mention {
+  background: #e8f4ff;
+  color: #0a66c2;
+}
+
+.action-btn.export {
+  background: #f0f7f3;
+  color: #1b7f3b;
+}
+
+/* ===============================
+   FEEDBACK BUTTON BAR
+=================================*/
+
+.feedback-buttons.clean {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+/* Make feedback buttons uniform */
+.feedback-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  background: #eef2f5;
+  transition: 0.15s;
+}
+
+.feedback-btn:hover {
+  background: #e1e7ec;
+}
+
+/* Expert button slightly bigger */
+.feedback-btn.expert {
+  padding: 6px 14px;
+}
+
+/* Share button */
+.feedback-btn.share {
+  padding: 6px 14px;
+}

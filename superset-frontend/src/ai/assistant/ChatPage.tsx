@@ -718,14 +718,22 @@ const handleMention = (message: any, messageIndex: number) => {
                 </div>
 
                 {/* ⭐ @MENTION — message level */}
-              <div style={{ marginTop: 6 }}>
-                <button
-                  className="mention-btn"
-                  onClick={() => handleMention(m, i)}
-                >
-                  📣 @ Mention
-                </button>
-              </div>
+              <div className="message-actions">
+              <button
+                className="action-btn mention"
+                onClick={() => handleMention(m, i)}
+              >
+                📣 Mention
+              </button>
+
+              <button
+                className="action-btn export"
+                onClick={() => handleShare(i)}
+              >
+                📥 Export
+              </button>
+            </div>
+
 
                 {m.chart?.image_url && (
                   <div className="chart-container">
@@ -803,7 +811,8 @@ const handleMention = (message: any, messageIndex: number) => {
                   Was this answer helpful?
                 </div>
                 
-                <div className="feedback-buttons">
+                <div className="feedback-buttons clean">
+
                   <button 
                     className="feedback-btn thumbs-up"
                     onClick={() => handleFeedback(m, 'thumbs_up', i)}
