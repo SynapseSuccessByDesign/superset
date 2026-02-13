@@ -1266,7 +1266,7 @@ const handleMention = (message: any, messageIndex: number) => {
 
           try {
 
-            const res = await fetch(`${API_BASE_URL}/feedback/mention`, {
+            const res = await fetch(`${API_BASE_URL}/mcp/feedback/mention`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
