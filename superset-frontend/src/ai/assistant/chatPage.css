@@ -1087,3 +1087,34 @@ button:hover,
 .chart-export-btn:hover {
   background: #138496;
 }
+
+.mention-btn {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #1d4ed8;
+  font-size: 14px;        /* bigger text */
+  font-weight: 500;
+  padding: 6px 14px;      /* more space */
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mention-btn:hover {
+  background: #e0e7ff;
+  border-color: #6366f1;
+}
+
+.mention-btn:active {
+  transform: scale(0.96);
+}
+
+.feedback-btn.mention {
+  background: #f5f3ff;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+
+.feedback-btn.mention:hover {
+  background: #ede9fe;
+}

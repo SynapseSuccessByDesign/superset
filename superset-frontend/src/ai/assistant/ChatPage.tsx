@@ -329,6 +329,20 @@ const [shareModal, setShareModal] = useState<{
   submitting: false
 });
 
+const [mentionModal, setMentionModal] = useState<{
+  show: boolean;
+  messageIndex: number | null;
+  users: string;
+  comment: string;
+  submitting: boolean;
+}>({
+  show: false,
+  messageIndex: null,
+  users: "",
+  comment: "",
+  submitting: false
+});
+
 
   // ✅ FIXED: Use unique session ID
   const [conversations, setConversations] = useState<Conversation[]>([
@@ -583,6 +597,18 @@ const handleShare = (messageIndex: number) => {
   });
 };
 
+// @Mention users
+const handleMention = (message: any, messageIndex: number) => {
+  setMentionModal({
+    show: true,
+    messageIndex,
+    users: "",
+    comment: "",
+    submitting: false
+  });
+};
+
+
   
   /* =========================
      Render
@@ -691,6 +717,16 @@ const handleShare = (messageIndex: number) => {
                   <ReactMarkdown>{narrative}</ReactMarkdown>
                 </div>
 
+                {/* ⭐ @MENTION — message level */}
+              <div style={{ marginTop: 6 }}>
+                <button
+                  className="mention-btn"
+                  onClick={() => handleMention(m, i)}
+                >
+                  📣 @ Mention
+                </button>
+              </div>
+
                 {m.chart?.image_url && (
                   <div className="chart-container">
                     <img
@@ -709,18 +745,7 @@ const handleShare = (messageIndex: number) => {
       }
     }}
   >
-    📥 Download PNG
-  </button>
-  <button 
-    className="chart-export-btn"
-    onClick={() => {
-      const chartId = m.chart?.image_url?.split('/').pop()?.replace('.png', '');
-      if (chartId) {
-        window.open(`${API_BASE_URL}/charts/download/${chartId}?format=pdf`, '_blank');
-      }
-    }}
-  >
-    📄 Download PDF
+    📥 Export
   </button>
 </div>
                   </div>
@@ -802,8 +827,8 @@ const handleShare = (messageIndex: number) => {
               onClick={() => handleShare(i)}
             >
               🔗 Share
-            </button>
-                </div>
+                  </button>
+                                </div>
               </div>
 
                 {m.confidence_reasons?.length > 0 && (
@@ -952,7 +977,7 @@ const handleShare = (messageIndex: number) => {
             expert_email: expertModal.expertEmail,
             question: userQuestion,
             answer:
-              (activeConversation.messages[idx] as any).answer || "",
+              (activeConversation.messages[idx] as any).content || "",
             context: expertModal.context,
           }),
         }
@@ -1132,6 +1157,179 @@ const handleShare = (messageIndex: number) => {
   </>
 )}
 
+{mentionModal.show && (
+  <>
+    <div
+      className="feedback-modal-overlay"
+      onClick={() =>
+        setMentionModal((p) => ({ ...p, show: false }))
+      }
+    />
+
+    <div className="feedback-modal">
+      <div className="feedback-modal-content">
+        <div className="feedback-modal-icon">📣</div>
+
+        <div className="feedback-modal-text">
+          <div className="feedback-modal-title">
+            Mention users
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 12, marginBottom: 6 }}>
+              User emails (comma separated)
+            </div>
+
+            <textarea
+              value={mentionModal.users}
+              onChange={(e) =>
+                setMentionModal((p) => ({
+                  ...p,
+                  users: e.target.value,
+                }))
+              }
+              placeholder="likitha@aaatechgroup.com, venkat@aaatechgroup.com"
+              style={{
+                width: "100%",
+                minHeight: 70,
+                padding: "10px 12px",
+                borderRadius: 8,
+                border: "1px solid rgba(0,0,0,0.15)",
+                outline: "none",
+                resize: "vertical",
+              }}
+            />
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 12, marginBottom: 6 }}>
+              Comment
+            </div>
+
+            <textarea
+              value={mentionModal.comment}
+              onChange={(e) =>
+                setMentionModal((p) => ({
+                  ...p,
+                  comment: e.target.value,
+                }))
+              }
+              placeholder='Example: "High severity incident — please check immediately"'
+              style={{
+                width: "100%",
+                minHeight: 80,
+                padding: "10px 12px",
+                borderRadius: 8,
+                border: "1px solid rgba(0,0,0,0.15)",
+                outline: "none",
+                resize: "vertical",
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <button
+        className="feedback-modal-close"
+        disabled={
+          mentionModal.submitting ||
+          !mentionModal.users.trim()
+        }
+        onClick={async () => {
+          if (!token) return;
+          if (mentionModal.messageIndex == null) return;
+
+          const idx = mentionModal.messageIndex;
+
+          const userMsg = activeConversation.messages[idx - 1];
+          const userQuestion =
+            userMsg && userMsg.role === "user"
+              ? userMsg.content
+              : "";
+
+          const emails = mentionModal.users
+            .split(",")
+            .map((e) => e.trim())
+            .filter((e) => e);
+
+          if (!emails.length) {
+            setModalState({
+              show: true,
+              type: "error",
+              message: "Please enter at least one user."
+            });
+            setMentionModal(p => ({ ...p, submitting: false }));
+            return;
+          }
+
+          setMentionModal((p) => ({ ...p, submitting: true }));
+
+          try {
+
+            const res = await fetch(`${API_BASE_URL}/feedback/mention`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  conversation_id: activeConvId,
+                  request_id: `${activeConvId}-${idx}`,
+                  mentioned_users: emails,
+                  question: userQuestion,
+                  answer:
+                    (activeConversation.messages[idx] as any)
+                      .answer || "",
+                  comment: mentionModal.comment,
+                }),
+              }
+            );
+
+            if (res.ok) {
+              setMentionModal({
+                show: false,
+                messageIndex: null,
+                users: "",
+                comment: "",
+                submitting: false,
+              });
+
+              setModalState({
+                show: true,
+                type: "success",
+                message: "Users mentioned successfully.",
+              });
+            } else {
+              const err = await res.json();
+              setModalState({
+                show: true,
+                type: "error",
+                message:
+                  err.detail || "Failed to mention users",
+              });
+              setMentionModal((p) => ({
+                ...p,
+                submitting: false,
+              }));
+            }
+          } catch {
+            setModalState({
+              show: true,
+              type: "error",
+              message: "Failed to mention users",
+            });
+            setMentionModal((p) => ({
+              ...p,
+              submitting: false,
+            }));
+          }
+        }}
+      >
+        {mentionModal.submitting ? "Sending..." : "Mention"}
+      </button>
+    </div>
+  </>
+)}
     </div>
   );
 }
