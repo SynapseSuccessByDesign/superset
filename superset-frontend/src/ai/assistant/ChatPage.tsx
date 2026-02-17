@@ -742,14 +742,14 @@ const handleMention = (message: any, messageIndex: number) => {
                       alt={m.chart.spec?.title || "Chart"}
                       className="chart-image"
                     />
-                    {/* ADD THIS SECTION */}
-    <div className="chart-actions">
+        {/* ADD THIS SECTION */}
+<div className="chart-actions">
   <button 
     className="chart-export-btn"
     onClick={() => {
-      const chartId = m.chart?.image_url?.split('/').pop()?.replace('.png', '');
-      if (chartId) {
-        window.open(`${API_BASE_URL}/charts/download/${chartId}?format=png`, '_blank');
+      if (m.chart?.image_url) {
+        // Use the image_url directly - it's already the correct path
+        window.open(`${API_BASE_URL}${m.chart.image_url}`, '_blank');
       }
     }}
   >
